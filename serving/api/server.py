@@ -84,7 +84,7 @@ class TransformerServer:
     def start(self, background: bool = False) -> None:
         """Start the HTTP server on configured host and port."""
         handler_cls = create_handler_class(self.route_handler)
-        self._server = http.server.HTTPServer((self.config.host, self.config.port), handler_cls)
+        self._server = http.server.ThreadingHTTPServer((self.config.host, self.config.port), handler_cls)
         logger.info(f"Starting stdlib HTTP server at http://{self.config.host}:{self.config.port}")
 
         if background:
@@ -100,8 +100,11 @@ class TransformerServer:
     def stop(self) -> None:
         """Stop and shutdown the HTTP server."""
         if self._server:
-            self._server.shutdown()
+            if self._thread is not None and self._thread.is_alive():
+                self._server.shutdown()
             self._server.server_close()
+            if self._thread is not None and self._thread is not threading.current_thread():
+                self._thread.join()
             logger.info("HTTP server stopped.")
 
 
